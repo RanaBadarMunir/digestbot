@@ -216,7 +216,11 @@ export function LibraryView() {
           </span>
           <h2 className="mt-4 text-lg font-semibold">Your library is empty</h2>
           <p className="mt-1 max-w-md text-sm text-slate-500">
-            Paste your first link above, import your browser bookmarks in{" "}
+            Paste your first link above, get the{" "}
+            <Link href="/app/extension" className="font-medium text-brand-600 hover:underline">
+              browser extension
+            </Link>{" "}
+            for one-click saving, import your bookmarks in{" "}
             <Link href="/app/settings" className="font-medium text-brand-600 hover:underline">
               Settings
             </Link>

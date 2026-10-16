@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DigestBot extension settings</title>
+    <link rel="stylesheet" href="ui.css" />
+    <style>
+      main { max-width: 640px; margin: 0 auto; padding: 32px 16px 64px; }
+      h1 { font-size: 24px; margin: 18px 0 4px; }
+      section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; margin-top: 16px; }
+      h2 { font-size: 15px; margin: 0 0 8px; }
+      .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+      input[type="text"], input[type="url"] {
+        flex: 1; min-width: 220px; font: inherit; color: var(--ink); background: var(--bg);
+        border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+      }
+      label.check { display: flex; gap: 10px; align-items: flex-start; }
+      label.check input { margin-top: 3px; accent-color: var(--brand); }
+      .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+      .pill.ok { background: var(--ok-soft); color: var(--ok); }
+      .pill.no { background: var(--warn-soft); color: var(--warn); }
+      .msg { margin-top: 8px; font-size: 13px; }
+      .msg.bad { color: var(--bad); }
+      .msg.ok { color: var(--ok); }
+      kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; background: var(--bg); }
+      details summary { cursor: pointer; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand"><img src="icons/icon-48.png" alt="" />DigestBot</div>
+      <h1>Extension settings</h1>
+      <p class="muted">Save any page in one click with the toolbar button or <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>, or right-click a page or link.</p>
+
+      <section>
+        <h2>Connection <span id="status" class="pill no">Not connected</span></h2>
+        <p id="who" class="muted">Connect this browser to your DigestBot account. You only do this once.</p>
+        <div class="row">
+          <button class="btn btn-primary" id="connect">Connect to DigestBot</button>
+          <button class="btn" id="disconnect" hidden>Disconnect</button>
+        </div>
+        <details style="margin-top:14px">
+          <summary>Use a different server or paste a connection code</summary>
+          <div class="row">
+            <input type="url" id="server" aria-label="DigestBot address" placeholder="https://digestbot-phi.vercel.app" />
+            <button class="btn" id="saveServer">Save address</button>
+          </div>
+          <div class="row">
+            <input type="text" id="code" aria-label="Connection code" placeholder="dbt_… (from DigestBot → Browser extension)" autocomplete="off" spellcheck="false" />
+            <button class="btn" id="useCode">Use code</button>
+          </div>
+        </details>
+        <p id="connMsg" class="msg" role="status"></p>
+      </section>
+
+      <section>
+        <h2>Browser bookmarks</h2>
+        <label class="check">
+          <input type="checkbox" id="autoSave" />
+          <span><b>Also save pages I bookmark with the browser’s ★ star</b><br /><span class="muted small">New bookmarks are sent to DigestBot automatically. Bookmarks imported from another browser are ignored.</span></span>
+        </label>
+        <div class="row">
+          <button class="btn" id="importAll">Import all my existing browser bookmarks</button>
+        </div>
+        <p id="importMsg" class="msg" role="status"></p>
+      </section>
+
+      <section>
+        <h2>Keyboard shortcut</h2>
+        <p class="muted">Default: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>. <a href="#" id="shortcuts">Change it</a>.</p>
+      </section>
+
+      <p class="small muted" style="margin-top:18px">The extension stores a connection token that can only save and read your own links. It never sees your password, and you can disconnect it here or in DigestBot → Browser extension.</p>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

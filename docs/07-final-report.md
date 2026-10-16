@@ -26,8 +26,10 @@ topic and priority, and compiles everything saved during a week into a single ne
 read in about five minutes, emailed, or shared with a team through a public link. An administrator portal
 provides role-based governance and usage analytics. The system is implemented in TypeScript with Next.js 15,
 PostgreSQL (Neon, serverless) and Drizzle ORM, deployed at zero cost on Vercel with a daily scheduler, and
-verified by 117 automated tests with 97.5 % line coverage of the domain and service layers, an OWASP Top 10
-review and a clean production dependency audit. Measured from Pakistan, the deployed API answers in a median of
+verified by 142 automated tests with 97.7 % line coverage of the domain and service layers, a 16-check
+end-to-end test of the browser extension in real Chrome, an OWASP Top 10 review and a clean production dependency
+audit. A Manifest V3 browser extension saves the current page in one click and forwards bookmarks made with the
+browser's own star. Measured from Pakistan, the deployed API answers in a median of
 about 350–380 ms, including roughly 250 ms of intercontinental network round-trip.
 
 **Keywords:** read-later, summarisation, extractive summarisation, large language models, newsletter, Next.js,
@@ -72,7 +74,7 @@ saved link produces some value without hours of reading.
 ### 1.3 Objectives
 | # | Objective | Status |
 |---|---|---|
-| O1 | Capture links with one click (paste, bookmarklet, mobile share URL, bulk import) | Achieved |
+| O1 | Capture links with one click (browser extension, paste, bookmarklet, mobile share URL, bulk import) | Achieved |
 | O2 | Safely fetch pages and extract readable text, including X/Twitter posts | Achieved |
 | O3 | Summarise each link into a TL;DR + 3 key points, with and without an AI service | Achieved |
 | O4 | Classify by topic, tags, reading time and priority; search, filter, batch-manage | Achieved |
@@ -83,7 +85,7 @@ saved link produces some value without hours of reading.
 
 ### 1.4 Scope
 In scope: individual user accounts, the five MVP features, administration, deployment. Out of scope (future
-work): team workspaces with shared bookmark pools, a browser extension, Slack/Telegram ingestion, native mobile
+work): team workspaces with shared bookmark pools, Slack/Telegram ingestion, a Firefox build of the extension, native mobile
 apps, paywalled content.
 
 ### 1.5 Report structure
@@ -139,7 +141,7 @@ The full IEEE 830 SRS is in `docs/02-srs.md` (20 functional requirements, 11 use
 Summary:
 
 - **Users:** Visitor, User (personas Ayesha — busy engineer; Bilal — product manager), Admin, Scheduler.
-- **Functional:** registration/login (bcrypt, JWT), multi-tenant isolation, capture (URL, bookmarklet, share URL,
+- **Functional:** registration/login (bcrypt, JWT), multi-tenant isolation, capture (browser extension, URL, bookmarklet, share URL,
   HTML import), safe extraction, AI/extractive summary, topic/tags/priority, search/filter/batch, weekly digest
   (auto + on demand), public sharing, settings, data export, account deletion, admin metrics, suspension, audit log,
   health endpoint.
@@ -159,7 +161,7 @@ Detailed diagrams: `docs/03-architecture.md` (3-tier diagram, DFD level 0 and 1,
 A three-tier, layered architecture:
 
 ```
-Browser (React 19 UI, bookmarklet)
+Browser (React 19 UI, bookmarklet) · DigestBot browser extension (bearer token)
    │ HTTPS + HTTP-only session cookie
    ▼
 Next.js 15 on Vercel serverless
@@ -206,7 +208,7 @@ section) because the product's promise is "a newsletter about your own reading".
 | Tests | Vitest + V8 coverage | Fast, TypeScript-native |
 | Hosting / CI | Vercel (Hobby), GitHub Actions | Zero cost, SSL, cron |
 
-Code size: **81 source files, ~5 300 lines** (4 300 application, 870 tests); **23 REST endpoints**.
+Code size: **99 source files, ~7 000 lines** (5 200 application, 670 extension, 1 100 tests); **27 REST endpoints**.
 
 ### 5.2 Capture pipeline
 `POST /api/bookmarks` validates and normalises the URL, inserts it with `ON CONFLICT DO NOTHING` (duplicate
@@ -219,6 +221,17 @@ Other capture routes: a **bookmarklet** (`javascript:` URL that opens `/save?url
 `javascript:` hrefs, so it is set on the DOM node directly), the same `/save` URL for mobile sharing, and **bulk
 import** of the Netscape bookmark-file format exported by every browser (up to 500 links, inserted in batches of
 100).
+
+**Browser extension** (`extension/`, full design in `docs/08-browser-extension.md`): a Manifest V3 extension for
+Chrome, Edge, Brave and Opera. One click on its toolbar icon (or `Alt+Shift+S`, or the right-click menu) saves
+the current page or a link; the popup then polls the bookmark and shows its topic, reading time and summary when
+ready. With the `bookmarks` permission it also forwards pages the user stars with the browser's own ★ and can
+import every existing browser bookmark in chunks of 500 — the answer to "how does DigestBot get my bookmarks?",
+since a website cannot read them. It authenticates with a **personal access token** created by a one-click
+connect flow on `/app/extension` (the page hands the token to a content script by same-origin `postMessage`). The
+server stores only the token's SHA-256 hash; a bearer request is authenticated by the token alone and only on
+four opted-in routes (save, read one bookmark, who-am-I, import), so a stolen token cannot read digests, change
+settings or reach the admin API.
 
 ### 5.3 Content processing
 1. **Fetch** — `safeFetch` (§5.4). X/Twitter status URLs use the public oEmbed endpoint, because X pages require
@@ -287,10 +300,11 @@ Full details: `docs/05-testing-and-security-audit.md`.
 
 | Level | What | Result |
 |---|---|---|
-| Unit | URL normalisation & SSRF guard, summariser, classifier, digest builder, extraction, import parser, Gemini client, passwords, JWT, HTTP helpers | 84 tests |
-| Integration | Services against a real in-memory PostgreSQL (PGlite) with production migrations: auth, bookmarks, tenant isolation, digests, sharing, email, cron, rate limiting, admin RBAC, account export/delete | 33 tests |
-| **Total** | | **117 passing** |
-| Coverage | `src/lib` + `src/server` | 95.8 % statements, 86.9 % branches, 95.1 % functions, **97.5 % lines** (gate: 70 %) |
+| Unit | URL normalisation & SSRF guard, summariser, classifier, digest builder, extraction, import parser, Gemini client, passwords, JWT, HTTP helpers, extension helpers | 102 tests |
+| Integration | Services against a real in-memory PostgreSQL (PGlite) with production migrations: auth, bookmarks, tenant isolation, digests, sharing, email, cron, rate limiting, admin RBAC, extension tokens, account export/delete | 40 tests |
+| **Total** | | **142 passing** |
+| Coverage | `src/lib` + `src/server` | 96.2 % statements, 87.8 % branches, 95.4 % functions, **97.7 % lines** (gate: 70 %) |
+| Extension E2E | Real Chrome 155, fresh profile, local server: install → connect → one-click save with summary → duplicate → ★ auto-save → import all → token refused by digests API → disconnect | 16/16 checks |
 | Static | `tsc --noEmit` strict; ESLint | 0 errors, 0 warnings |
 | Dependencies | `npm audit --omit=dev` | 0 vulnerabilities (after pinning PostCSS ≥ 8.5.30 via `overrides`) |
 | End-to-end | Manual smoke test on the production build: log in → save a live article → summary appears → generate digest → share → open share link logged out → admin portal | Pass |
@@ -307,6 +321,9 @@ Full details: `docs/05-testing-and-security-audit.md`.
 5. Custom CSS component classes overrode Tailwind utility colours (found visually in the browser).
 6. Deployment: piping secrets into the Vercel CLI added a trailing newline, which Vercel rejected for the cron
    header — fixed by writing the values byte-exact.
+7. Extension E2E: the offline summariser could repeat a sentence and keep footnote numbers ("2: The pyramid…");
+   sentences are now de-duplicated and list markers stripped. The options page showed Connect and Disconnect at
+   once (a CSS rule overrode `hidden`), and reconnecting left old tokens behind — both fixed and re-tested.
 
 ---
 
@@ -346,7 +363,7 @@ FR-7) likewise activate with a Gemini key; until then the extractive engine sati
 | NFR-4 uptime | ≥ 99.5 % | Platform SLAs; health endpoint for monitoring; not measured over a month | Not yet measurable |
 | NFR-5 – NFR-9 security | see SRS | Tests + OWASP review (`docs/05`) | Yes |
 | NFR-10 privacy | export, delete | Implemented and tested | Yes |
-| NFR-11 coverage/CI | ≥ 70 %, CI | 97.5 % lines; CI green | Yes |
+| NFR-11 coverage/CI | ≥ 70 %, CI | 97.7 % lines; CI green | Yes |
 | NFR-12 responsive | ≥ 360 px | Verified at 375 px | Yes |
 | NFR-14 cost | zero | All free tiers | Yes |
 
@@ -378,7 +395,7 @@ The project followed the university's 12-week sequential plan with an iterative 
 | 7 | **Midterm gate** | Working prototype, `docs/06` midterm report & deck |
 | 8 | Secondary modules & APIs | Gemini, oEmbed, import, batch ops, cron |
 | 9 | Admin & UX polish | RBAC admin portal, charts, toasts, mobile layout |
-| 10 | Testing & security audit | 117 tests, `docs/05` |
+| 10 | Testing & security audit | 117 tests, `docs/05` (142 after the extension) |
 | 11 | Deployment & CI | Vercel + Neon, GitHub Actions |
 | 12 | **Final report & viva** | This report, final deck, live demo |
 
@@ -403,7 +420,8 @@ The project followed the university's 12-week sequential plan with an iterative 
 
 **Future work**
 1. **Team workspaces** — shared bookmark pools and a team digest (persona Bilal's main wish).
-2. **Browser extension** and Slack/Telegram bots for capture.
+2. **Slack/Telegram bots** for capture; publish the extension to the Chrome Web Store and Edge Add-ons, and a
+   Firefox build.
 3. **Per-user time zones** and digest hour.
 4. **Personalised ranking** from click-through on digest links.
 5. **Formal evaluation** of summary quality (ROUGE) and of user value (survey with the personas).
@@ -446,6 +464,9 @@ _(Add any papers or books your department requires; check the citation style you
 | Log in | ![Login](screenshots/02-login.png) |
 | Library (reading queue) | ![Library](screenshots/03-library.png) |
 | Weekly digest | ![Digest](screenshots/04-digest.png) |
+| Extension: connected | ![Extension connected](screenshots/12-extension-connected.png) |
+| Extension: one-click popup | ![Extension popup](screenshots/13-extension-popup.png) |
+| Extension: settings | ![Extension settings](screenshots/14-extension-options.png) |
 | Digest list | ![Digests](screenshots/05-digests.png) |
 | Settings | ![Settings](screenshots/06-settings.png) |
 | Admin overview | ![Admin overview](screenshots/07-admin-overview.png) |
@@ -459,8 +480,11 @@ _(Add any papers or books your department requires; check the citation style you
 1. **Sign up** at the live URL with your name, email and a password (8+ characters with a letter and a number).
 2. **Save links:** paste a link into the box at the top of *Library* and press *Save link*. Within a few seconds the
    card shows a summary, key points, topic and reading time.
-3. **One-click saving:** in *Settings → One-click capture*, drag *Save to DigestBot* to your bookmarks bar; click it
-   on any page. On mobile, open `<site>/save?url=<link>`.
+3. **One-click saving:** open *Settings → Browser extension*, download the extension, load it in
+   `chrome://extensions` (Developer mode → Load unpacked) and click *Connect this browser*. Then click the DigestBot
+   icon on any page, press `Alt+Shift+S`, or right-click a link. Pages you ★ in the browser are saved too. Without
+   the extension: drag the *Save to DigestBot* bookmarklet from Settings to your bookmarks bar. On mobile, open
+   `<site>/save?url=<link>`.
 4. **Import old bookmarks:** export them from your browser as HTML, then *Settings → Import bookmarks*.
 5. **Triage:** search, filter by status or topic, select several cards and mark read / archive / delete.
 6. **Digest:** choose your digest day in *Settings*; it is built automatically each week. Or open *Digests →
@@ -489,8 +513,9 @@ No database server is needed locally (embedded PGlite in `.data/`).
 5. Check `/api/health`.
 
 ## Appendix D — API summary
-23 endpoints under `/api`: `auth/{signup,login,logout,me}`, `bookmarks` (list, create), `bookmarks/{id}` (get,
-update, delete), `bookmarks/{id}/resummarize`, `bookmarks/{batch,import,process}`, `digests` (list, create),
+27 endpoints under `/api`: `auth/{signup,login,logout,me}`, `bookmarks` (list, create), `bookmarks/{id}` (get,
+update, delete), `bookmarks/{id}/resummarize`, `bookmarks/{batch,import,import-links,process}`, `tokens` (list,
+create), `tokens/{id}` (revoke), `extension/disconnect`, `digests` (list, create),
 `digests/{id}` (get, share, delete), `digests/{id}/email`, `settings`, `settings/password`, `account`,
 `account/export`, `admin/{metrics,users,events}`, `admin/users/{id}`, `cron/weekly`, `health`. Full contracts:
 `docs/04-database-api-wireframes.md` §2.

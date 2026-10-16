@@ -60,6 +60,17 @@ describe("summarizeExtractive", () => {
     expect(r.tags).toContain("kubernetes");
     expect(r.readingMinutes).toBe(1);
   });
+  it("never repeats a sentence and strips footnote numbers", () => {
+    const text =
+      "2: The pyramid is based on the assumption that broad tests are slow and brittle. " +
+      "Unit tests are fast. 2: The pyramid is based on the assumption that broad tests are slow and brittle. " +
+      "Teams should write many unit tests and few broad tests to keep the pyramid healthy. The pyramid helps teams.";
+    const r = summarizeExtractive(text);
+    expect(r.summary).not.toMatch(/^\d+:/);
+    const all = [r.summary, ...r.keyPoints].join(" ");
+    expect(all.match(/The pyramid is based on/g)).toHaveLength(1);
+  });
+
   it("falls back to the description when there is no body text", () => {
     const r = summarizeExtractive("", "A short description of the page.");
     expect(r.summary).toBe("A short description of the page.");

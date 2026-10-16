@@ -33,6 +33,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+!.env.example
 
 # local embedded database
 /.data
@@ -48,3 +49,7 @@ next-env.d.ts
 vercel-env.local.txt
 .vercel
 .env*
+!.env.example
+
+# built from ./extension by scripts/pack-extension.mjs
+/public/digestbot-extension.zip

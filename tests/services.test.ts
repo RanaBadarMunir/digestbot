@@ -4,13 +4,15 @@ import type { DB } from "@/db";
 import { bookmarks, digests, events, users, type User } from "@/db/schema";
 import { ARTICLE_HTML, freshDb } from "./helpers";
 
-// Cookie jar standing in for next/headers in route-less tests.
+// Cookie jar and request headers standing in for next/headers in route-less tests.
 const jar = new Map<string, string>();
+const reqHeaders = new Map<string, string>();
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined),
     set: (name: string, value: string) => (value ? jar.set(name, value) : jar.delete(name)),
   }),
+  headers: async () => ({ get: (name: string) => reqHeaders.get(name.toLowerCase()) ?? null }),
 }));
 
 const { changePassword, deleteAccount, exportAccount, updateSettings } = await import("@/server/account");
@@ -20,6 +22,7 @@ const bm = await import("@/server/bookmarks");
 const dg = await import("@/server/digests");
 const { rateLimit, enforceRateLimit } = await import("@/server/rate-limit");
 const { extractFromHtml } = await import("@/lib/extract");
+const tk = await import("@/server/tokens");
 
 const COST = 4;
 const fakeExtract = async (url: string) => extractFromHtml(ARTICLE_HTML, url);
@@ -320,6 +323,85 @@ describe("admin service", () => {
     expect(adminEvents.items.map((e) => e.type)).toContain("admin.user_suspended");
     const failed = await db.select().from(events).where(eq(events.type, "auth.login_failed"));
     expect(failed.length).toBeGreaterThan(0);
+  });
+});
+
+describe("extension tokens", () => {
+  let token: string;
+  let tokenId: string;
+  const asBearer = (t: string | null) => (t === null ? reqHeaders.delete("authorization") : reqHeaders.set("authorization", `Bearer ${t}`));
+
+  it("creates a token shown once, storing only its SHA-256 hash", async () => {
+    const r = await tk.createToken(bob, { name: "Chrome extension" });
+    token = r.token;
+    tokenId = r.record.id;
+    expect(token).toMatch(/^dbt_[A-Za-z0-9_-]{43}$/);
+    expect(r.record.tokenHash).toBe(tk.hashToken(token));
+    expect(r.record.tokenHash).not.toContain(token.slice(4));
+    const listed = (await tk.listTokens(bob)).map(tk.serializeToken);
+    expect(listed).toHaveLength(1);
+    expect(listed[0].prefix).toBe(`dbt_${token.slice(4, 10)}…`);
+    expect(JSON.stringify(listed)).not.toContain(r.record.tokenHash);
+    expect(await tk.listTokens(alice)).toHaveLength(0);
+  });
+
+  it("authenticates only on routes that opt in, and never falls back to the cookie", async () => {
+    await auth.startSession(alice); // a cookie for a different user is present too
+    asBearer(token);
+    expect(await auth.currentUser()).toBeNull();
+    await expect(auth.requireUser()).rejects.toMatchObject({ status: 401 });
+    expect((await auth.currentUser({ allowToken: true }))?.id).toBe(bob.id);
+    expect((await auth.requireTokenAuth()).tokenId).toBe(tokenId);
+    asBearer("dbt_" + "x".repeat(43));
+    expect(await auth.currentUser({ allowToken: true })).toBeNull();
+    asBearer("not-a-token");
+    expect(await auth.currentUser({ allowToken: true })).toBeNull();
+    await expect(auth.requireTokenAuth()).rejects.toMatchObject({ status: 401 });
+    asBearer(null);
+    expect((await auth.currentUser())?.id).toBe(alice.id); // no header: the cookie works as before
+    await auth.endSession();
+  });
+
+  it("records when a token was last used", async () => {
+    const before = (await tk.listTokens(bob))[0];
+    expect(before.lastUsedAt).toBeInstanceOf(Date);
+    expect(before.lastUsedAt!.getTime()).toBeGreaterThan(Date.now() - 60_000);
+  });
+
+  it("imports a list of links sent by the extension", async () => {
+    const links = [
+      { url: "https://ext.example.com/a", title: "  A   title " },
+      { url: "https://ext.example.com/a#dupe" },
+      { url: "chrome://settings", title: "bad" },
+    ];
+    expect(await bm.importLinksJson(bob, { links })).toEqual({ imported: 1, duplicates: 0, skipped: 1 });
+    const { items } = await bm.listBookmarks(bob, { q: "ext.example.com" });
+    expect(items[0].title).toBe("A title");
+    await expect(bm.importLinksJson(bob, { links: [] })).rejects.toThrow();
+    await expect(bm.importLinksJson(bob, { links: Array.from({ length: 501 }, (_, i) => ({ url: `https://x${i}.example.com` })) })).rejects.toThrow();
+  });
+
+  it("stops working for suspended users", async () => {
+    await db.update(users).set({ status: "suspended" }).where(eq(users.id, bob.id));
+    expect(await tk.userFromToken(token)).toBeNull();
+    await db.update(users).set({ status: "active" }).where(eq(users.id, bob.id));
+    expect((await tk.userFromToken(token))?.user.id).toBe(bob.id);
+  });
+
+  it("can be revoked by its owner only, or by the extension itself", async () => {
+    await expect(tk.revokeToken(alice, tokenId)).rejects.toMatchObject({ status: 404 });
+    await expect(tk.revokeToken(bob, "nope")).rejects.toMatchObject({ status: 404 });
+    await tk.revokeToken(bob, tokenId);
+    expect(await tk.userFromToken(token)).toBeNull();
+    const again = await tk.createToken(bob, {});
+    expect(again.record.name).toBe("Browser extension");
+    await tk.revokeTokenById(again.record.id);
+    expect(await tk.userFromToken(again.token)).toBeNull();
+  });
+
+  it("limits each user to 10 connected browsers", async () => {
+    for (let i = 0; i < tk.MAX_TOKENS_PER_USER; i++) await tk.createToken(alice, { name: `Browser ${i}` });
+    await expect(tk.createToken(alice, {})).rejects.toMatchObject({ status: 409 });
   });
 });
 

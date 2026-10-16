@@ -282,9 +282,15 @@ export async function resetForResummarize(user: User, id: string) {
   await db.update(bookmarks).set({ summarySource: "pending", error: null }).where(eq(bookmarks.id, id));
 }
 
-export async function importBookmarks(user: User, html: string) {
-  const links = parseBookmarksHtml(html, MAX_IMPORT_LINKS + 1);
-  if (links.length === 0) throw badRequest("No links found. Export your bookmarks as an HTML file from your browser and try again.");
+const importLinksSchema = z.object({
+  links: z
+    .array(z.object({ url: z.string().max(4096), title: z.string().max(1000).optional().default("") }))
+    .min(1, "No links to import.")
+    .max(MAX_IMPORT_LINKS, `Send at most ${MAX_IMPORT_LINKS} links per request.`),
+});
+
+/** Saves a list of links in batches, skipping invalid URLs and ones already in the library. */
+export async function importLinks(user: User, links: Array<{ url: string; title: string }>, source: "html" | "extension") {
   const db = await getDb();
   const values: Array<typeof bookmarks.$inferInsert> = [];
   let skipped = 0;
@@ -295,7 +301,8 @@ export async function importBookmarks(user: User, html: string) {
       const urlHash = hashUrl(url);
       if (seen.has(urlHash)) continue;
       seen.add(urlHash);
-      values.push({ userId: user.id, url, urlHash, title: link.title || siteNameFromUrl(url), siteName: siteNameFromUrl(url) });
+      const title = link.title.replace(/\s+/g, " ").trim().slice(0, 300);
+      values.push({ userId: user.id, url, urlHash, title: title || siteNameFromUrl(url), siteName: siteNameFromUrl(url) });
     } catch {
       skipped++;
     }
@@ -310,8 +317,19 @@ export async function importBookmarks(user: User, html: string) {
       .returning({ id: bookmarks.id });
     imported += rows.length;
   }
-  await logEvent("bookmark.imported", user.id, { imported });
+  await logEvent("bookmark.imported", user.id, { imported, source });
   return { imported, duplicates: values.length - imported, skipped };
 }
 
-export const importFileSchema = z.object({ size: z.number().max(2 * 1024 * 1024, "File is larger than 2 MB") });
+/** Browser bookmarks HTML export (Settings → Import). */
+export async function importBookmarks(user: User, html: string) {
+  const links = parseBookmarksHtml(html, MAX_IMPORT_LINKS + 1);
+  if (links.length === 0) throw badRequest("No links found. Export your bookmarks as an HTML file from your browser and try again.");
+  return importLinks(user, links, "html");
+}
+
+/** JSON list sent by the browser extension ("Import all my browser bookmarks"). */
+export async function importLinksJson(user: User, input: unknown) {
+  const { links } = importLinksSchema.parse(input);
+  return importLinks(user, links, "extension");
+}

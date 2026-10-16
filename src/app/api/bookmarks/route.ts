@@ -15,7 +15,7 @@ export const GET = route(async (req) => {
 });
 
 export const POST = route(async (req) => {
-  const user = await requireUser();
+  const user = await requireUser({ allowToken: true });
   await enforceRateLimit(`bookmark:${user.id}`, 200, 3600, "You've saved a lot of links this hour — please wait a bit.");
   const { bookmark, duplicate } = await createBookmark(user, await readJson(req));
   if (!duplicate) after(() => processBookmark(bookmark.id));

@@ -51,6 +51,8 @@ export function errorResponse(err: unknown): NextResponse {
  */
 export function assertSameOrigin(req: Request) {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return;
+  // Bearer-token requests (the browser extension) never use the cookie, so CSRF does not apply.
+  if (req.headers.get("authorization")?.startsWith("Bearer ")) return;
   const origin = req.headers.get("origin");
   if (!origin) return; // non-browser clients (curl, tests) — cookies are SameSite=Lax anyway
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");

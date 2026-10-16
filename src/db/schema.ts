@@ -120,6 +120,23 @@ export const events = pgTable(
   (t) => [index("events_created_idx").on(t.createdAt), index("events_type_created_idx").on(t.type, t.createdAt)],
 );
 
+/** Personal access tokens for the browser extension. Only a SHA-256 hash is stored. */
+export const apiTokens = pgTable(
+  "api_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 60 }).notNull(),
+    tokenHash: char("token_hash", { length: 64 }).notNull(),
+    prefix: varchar("prefix", { length: 16 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("api_tokens_hash_uq").on(t.tokenHash), index("api_tokens_user_idx").on(t.userId)],
+);
+
 export const rateLimits = pgTable("rate_limits", {
   key: varchar("key", { length: 200 }).primaryKey(),
   windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
@@ -129,3 +146,4 @@ export const rateLimits = pgTable("rate_limits", {
 export type User = typeof users.$inferSelect;
 export type Bookmark = typeof bookmarks.$inferSelect;
 export type Digest = typeof digests.$inferSelect;
+export type ApiToken = typeof apiTokens.$inferSelect;

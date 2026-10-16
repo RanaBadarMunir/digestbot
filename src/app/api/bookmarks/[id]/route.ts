@@ -5,7 +5,7 @@ import { readJson } from "@/server/http";
 import { type IdContext, route } from "@/server/route";
 
 export const GET = route<IdContext>(async (_req, { params }) => {
-  const user = await requireUser();
+  const user = await requireUser({ allowToken: true });
   return NextResponse.json({ bookmark: serializeBookmark(await getBookmark(user, (await params).id)) });
 });
 

@@ -93,7 +93,18 @@ export interface ExtractiveSummary {
 export function summarizeExtractive(rawText: string, fallback = ""): ExtractiveSummary {
   // drop footnote markers like [2] or [citation needed]
   const text = rawText.replace(/\[(\d{1,3}|citation needed|edit)\]/gi, "");
-  const sentences = splitSentences(text).filter((s) => countWords(s) >= 4).slice(0, 400);
+  // Pages often repeat a sentence (pull quotes, footnotes, captions) and number their notes ("2: …"):
+  // drop leading list/footnote markers and keep only the first copy of each sentence.
+  const seen = new Set<string>();
+  const sentences = splitSentences(text)
+    .map((s) => s.replace(/^(\(?\d{1,3}[:.)]|[-•*–])\s+/, "").trim())
+    .filter((s) => {
+      const key = s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      if (countWords(s) < 4 || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 400);
   if (sentences.length === 0) {
     const f = fallback.trim();
     return { summary: f ? clip(f, 320) : "", keyPoints: [], tags: topKeywords(`${text} ${fallback}`), readingMinutes: readingMinutes(text) };

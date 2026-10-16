@@ -180,7 +180,14 @@ export function SettingsView() {
 
       <Section title="One-click capture" description="Save any page you're reading without opening DigestBot.">
         <div className="space-y-3 text-sm text-slate-600">
-          <p>Drag this button to your bookmarks bar, then click it on any page:</p>
+          <p>
+            <b>Best:</b>{" "}
+            <a href="/app/extension" className="font-semibold text-brand-600 hover:underline">
+              install the DigestBot browser extension
+            </a>{" "}
+            — one-click saving, a keyboard shortcut, right-click saving and your browser’s ★ bookmarks.
+          </p>
+          <p>No extension? Drag this button to your bookmarks bar, then click it on any page:</p>
           <a
             ref={bookmarklet}
             href="#"

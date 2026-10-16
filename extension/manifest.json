@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "DigestBot — save to your weekly digest",
+  "short_name": "DigestBot",
+  "version": "1.0.0",
+  "description": "Save the page you're reading to DigestBot in one click. It's summarised and added to your weekly digest.",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Save to DigestBot (Alt+Shift+S)",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "permissions": ["activeTab", "contextMenus", "storage", "bookmarks"],
+  "host_permissions": ["https://digestbot-phi.vercel.app/*", "http://localhost:3000/*"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://digestbot-phi.vercel.app/app/extension*", "http://localhost:3000/app/extension*"],
+      "js": ["connect.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "Save the current page to DigestBot"
+    }
+  }
+}

@@ -79,3 +79,19 @@ summary.
 - CSP allows `'unsafe-inline'` scripts because Next.js injects inline bootstrapping scripts; a nonce-based CSP is
   a future improvement.
 - Rate limiting is per serverless region via Postgres; adequate for the free tier's scale.
+
+## 4. Addendum — browser extension (after Week 10)
+
+The browser extension (`docs/08-browser-extension.md`) added personal access tokens, so the review was repeated
+for them:
+
+- **A01 / A07:** a bearer request is authenticated by the token alone (never the cookie) and only on four opted-in
+  routes — save, read one bookmark, who-am-I, import. Verified in real Chrome: the digests API answers 401.
+- **A02:** tokens are 256-bit random values; only their SHA-256 hash is stored; shown once; max 10 per user;
+  revocable from the website or the extension; suspended users' tokens stop working at once.
+- **CSRF:** the Origin check is skipped only for bearer requests, which carry no cookie.
+- **Token hand-over:** the content script runs only on DigestBot's own origin and accepts same-window,
+  same-origin messages; the service worker re-validates the token before storing it.
+
+Test totals after the extension: **142 automated tests** (102 unit, 40 integration), **97.7 % line coverage**, plus
+16/16 end-to-end checks of the extension in Chrome 155.

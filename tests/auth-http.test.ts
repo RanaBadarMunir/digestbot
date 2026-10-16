@@ -49,6 +49,11 @@ describe("http helpers", () => {
     expect(() => assertSameOrigin(req("GET", { origin: "https://evil.test", host: "app.test" }))).not.toThrow();
     expect(() => assertSameOrigin(req("POST", { origin: "https://evil.test", host: "app.test" }))).toThrow(ApiError);
     expect(() => assertSameOrigin(req("DELETE", { origin: "null", host: "app.test" }))).toThrow(ApiError);
+    // the extension authenticates with a bearer token (no cookie), so its extension origin is allowed
+    expect(() =>
+      assertSameOrigin(req("POST", { origin: "chrome-extension://abcdef", host: "app.test", authorization: "Bearer dbt_x" })),
+    ).not.toThrow();
+    expect(() => assertSameOrigin(req("POST", { origin: "https://evil.test", host: "app.test", authorization: "Basic eA==" }))).toThrow(ApiError);
   });
 
   it("maps errors to status codes", async () => {

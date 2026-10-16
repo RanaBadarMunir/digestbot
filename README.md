@@ -8,7 +8,8 @@
 **Live app:** https://digestbot-phi.vercel.app · **Health:** https://digestbot-phi.vercel.app/api/health
 
 ## Features
-- **One-click capture** — paste a link, use the bookmarklet, share to `/save?url=…` from mobile, or import your browser's bookmarks file (up to 500 links).
+- **Browser extension** — one click on the toolbar icon (or `Alt+Shift+S`, or right-click) saves the page; pages you ★ in the browser are sent automatically, and existing browser bookmarks import in one go. Chrome, Edge, Brave, Opera. See [docs/08](docs/08-browser-extension.md).
+- **Other capture** — paste a link, use the bookmarklet, share to `/save?url=…` from mobile, or import your browser's bookmarks file (up to 500 links).
 - **Automatic summaries** — each page is fetched safely, its readable text extracted, and summarised into a TL;DR + 3 key points with **Google Gemini**, or an offline extractive summariser when no AI key is set.
 - **Smart triage** — topic, tags, reading time and priority; search, filters and batch actions.
 - **Weekly digest** — compiled automatically on your chosen weekday (Vercel Cron), grouped by topic with "worth a full read" picks; view in-app or by email (Resend).
@@ -31,11 +32,12 @@ No database setup is needed locally: without `DATABASE_URL` the app runs an embe
 | Script | What it does |
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js |
-| `npm test` / `npm run test:coverage` | Vitest (117 tests, coverage gate 70 %) |
+| `npm test` / `npm run test:coverage` | Vitest (142 tests, coverage gate 70 %) |
 | `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
 | `npm run db:generate` | New SQL migration from `src/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations to `DATABASE_URL` (runs automatically in the Vercel build) |
 | `npm run db:seed` | Demo user and bookmarks |
+| `npm run ext:pack` | Zip `extension/` into `public/digestbot-extension.zip` (also runs before every build) |
 
 ## Deploy (zero cost)
 1. Import the GitHub repo in Vercel.
@@ -52,6 +54,7 @@ src/
   server/         services: auth, bookmarks, digests, admin, account, rate limit, email
   lib/            pure domain logic: url safety, extraction, summariser, topics, digest builder, Gemini client
   db/             Drizzle schema + connection (Neon / PGlite)
+extension/        browser extension (Manifest V3): popup, service worker, options, connect script
 drizzle/          SQL migrations
 tests/            Vitest unit + integration tests
 docs/             weekly FYP deliverables (personas, SRS, architecture, ERD/API/wireframes, testing & security)
@@ -65,3 +68,4 @@ docs/             weekly FYP deliverables (personas, SRS, architecture, ERD/API/
 5. [Testing & security audit](docs/05-testing-and-security-audit.md)
 6. [Midterm progress report & demo checklist](docs/06-midterm-progress-report.md)
 7. [Final FYP report](docs/07-final-report.md) (screenshots in [docs/screenshots](docs/screenshots))
+8. [Browser extension](docs/08-browser-extension.md)

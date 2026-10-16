@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getDb } from "@/db";
 import { type User, users } from "@/db/schema";
 import { dummyHashFor, hashPassword, verifyPassword } from "@/lib/password";
@@ -7,6 +7,7 @@ import { SESSION_COOKIE, sessionCookieOptions, signSession, verifySession } from
 import { loginSchema, signupSchema } from "@/lib/validation";
 import { logEvent } from "./events";
 import { ApiError, forbidden, unauthorized } from "./http";
+import { userFromToken } from "./tokens";
 
 export type PublicUser = ReturnType<typeof publicUser>;
 
@@ -82,7 +83,23 @@ export async function endSession() {
 }
 
 /** Loads the session user from the DB on every call, so suspensions and role changes apply immediately. */
-export async function currentUser(): Promise<User | null> {
+async function bearerToken(): Promise<string | null> {
+  const auth = (await headers()).get("authorization");
+  return auth?.startsWith("Bearer ") ? auth.slice(7).trim() : null;
+}
+
+/**
+ * A request carrying `Authorization: Bearer …` is authenticated by that token
+ * only (never by the cookie), and only where the route opts in with
+ * `allowToken`, so an extension token can save links but cannot read digests,
+ * change settings or use the admin API.
+ */
+export async function currentUser(opts: { allowToken?: boolean } = {}): Promise<User | null> {
+  const bearer = await bearerToken();
+  if (bearer !== null) {
+    if (!opts.allowToken) return null;
+    return (await userFromToken(bearer))?.user ?? null;
+  }
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const session = await verifySession(token);
   if (!session) return null;
@@ -92,10 +109,18 @@ export async function currentUser(): Promise<User | null> {
   return user;
 }
 
-export async function requireUser(): Promise<User> {
-  const user = await currentUser();
+export async function requireUser(opts: { allowToken?: boolean } = {}): Promise<User> {
+  const user = await currentUser(opts);
   if (!user) throw unauthorized();
   return user;
+}
+
+/** For the extension's own endpoints: the token's user and the token's id. */
+export async function requireTokenAuth(): Promise<{ user: User; tokenId: string }> {
+  const bearer = await bearerToken();
+  const auth = bearer ? await userFromToken(bearer) : null;
+  if (!auth) throw unauthorized("This browser is not connected to DigestBot.");
+  return auth;
 }
 
 export async function requireAdmin(): Promise<User> {
