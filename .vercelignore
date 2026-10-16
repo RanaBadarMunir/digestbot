@@ -1,0 +1,7 @@
+.data
+coverage
+.next
+node_modules
+.env*
+!.env.example
+vercel-env.local.txt

@@ -5,6 +5,8 @@
 
 **Project ID:** PTUT-PRJ-096 · **Track:** 10. Productivity, Remote Work & Asynchronous Collaboration
 
+**Live app:** https://digestbot-phi.vercel.app · **Health:** https://digestbot-phi.vercel.app/api/health
+
 ## Features
 - **One-click capture** — paste a link, use the bookmarklet, share to `/save?url=…` from mobile, or import your browser's bookmarks file (up to 500 links).
 - **Automatic summaries** — each page is fetched safely, its readable text extracted, and summarised into a TL;DR + 3 key points with **Google Gemini**, or an offline extractive summariser when no AI key is set.
