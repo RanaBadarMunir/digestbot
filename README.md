@@ -64,3 +64,4 @@ docs/             weekly FYP deliverables (personas, SRS, architecture, ERD/API/
 4. [ERD, API contracts & wireframes](docs/04-database-api-wireframes.md)
 5. [Testing & security audit](docs/05-testing-and-security-audit.md)
 6. [Midterm progress report & demo checklist](docs/06-midterm-progress-report.md)
+7. [Final FYP report](docs/07-final-report.md) (screenshots in [docs/screenshots](docs/screenshots))
