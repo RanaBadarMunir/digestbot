@@ -159,10 +159,15 @@ export function ExtensionView({ fromExtension }: { fromExtension: boolean }) {
                 Open <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">chrome://extensions</code> (Edge: <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">edge://extensions</code>) and turn on <b>Developer mode</b>.
               </li>
               <li>
-                Click <b>Load unpacked</b> and choose the <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">digestbot-extension</code> folder.
+                Click <b>Load unpacked</b> and choose the unzipped folder — the one that has{" "}
+                <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">manifest.json</code> directly inside it.
               </li>
               <li>The extension opens this page by itself — click <b>Connect this browser</b>.</li>
             </ol>
+            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <b>“Manifest file is missing or unreadable”?</b> You picked a folder one level too high. Open it, find the folder
+              that contains <code className="text-xs">manifest.json</code>, and choose that one with <b>Load unpacked</b>.
+            </p>
             <div className="mt-5 border-t border-slate-100 pt-4">
               {code ? (
                 <div>

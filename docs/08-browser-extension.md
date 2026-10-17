@@ -22,8 +22,11 @@ the `bookmarks` permission can.
 ## 2. Install (users)
 
 1. In DigestBot open **Settings → Browser extension** (or `/app/extension`) and download the `.zip`; unzip it.
-2. Open `chrome://extensions` (Edge: `edge://extensions`), turn on **Developer mode**, click **Load unpacked** and
-   choose the `digestbot-extension` folder.
+2. Open `chrome://extensions` (Edge: `edge://extensions`, Opera: `opera://extensions`), turn on **Developer mode**,
+   click **Load unpacked** and choose the unzipped folder — the one with `manifest.json` directly inside it.
+   *“Manifest file is missing or unreadable”* means the chosen folder is one level too high (some unzip tools
+   create `digestbot-extension\digestbot-extension\`): choose the inner folder. Since 17 Oct the zip keeps
+   `manifest.json` at its root, so Windows “Extract All” and 7-Zip/WinRAR “Extract to …\” give the right folder.
 3. The extension opens DigestBot’s *Browser extension* page by itself; click **Connect this browser**. Done —
    pin the icon from the puzzle-piece menu.
 

@@ -1,4 +1,4 @@
-// Packs ./extension into public/digestbot-extension.zip (served at /digestbot-extension.zip).
+// Packs ./extension into public/digestbot-extension.zip (served at /digestbot-extension.zip), manifest.json at the root.
 // Runs before every build ("prebuild"). Minimal ZIP writer: deflate + CRC-32, no dependencies.
 import fs from "node:fs";
 import path from "node:path";
@@ -36,7 +36,9 @@ let offset = 0;
 for (const name of listFiles(src)) {
   const data = fs.readFileSync(path.join(src, name));
   const packed = zlib.deflateRawSync(data, { level: 9 });
-  const nameBuf = Buffer.from(`digestbot-extension/${name}`, "utf8");
+  // Files at the zip root (manifest.json at the top), like a Chrome Web Store package. With a top-level
+  // folder, "Extract All" / "Extract to digestbot-extension\" nested it twice and Chrome found no manifest.
+  const nameBuf = Buffer.from(name, "utf8");
   const crc = crc32(data);
 
   const local = Buffer.alloc(30);
